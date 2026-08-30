@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node / Tailwind
+node_modules/
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

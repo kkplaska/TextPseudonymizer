@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Pseudonymizer</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link href="/static/css/output.css" rel="stylesheet">
+    <style>
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569; 
+        }
+        
+        .toast-enter {
+            animation: slideInRight 0.3s ease-out forwards;
+        }
+        .toast-leave {
+            animation: slideOutRight 0.3s ease-in forwards;
+        }
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col antialiased">
+    
+    <!-- Navbar -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-emerald-400">
+                    Text Pseudonymizer
+                </h1>
+                <span data-i18n="badge_text" class="inline-flex items-center rounded-full bg-emerald-400/10 px-2.5 py-0.5 text-xs font-medium text-emerald-400 border border-emerald-400/20">
+                    Zero-Retention / In-Memory
+                </span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <nav class="flex space-x-1" aria-label="Tabs">
+                    <button id="tab-btn-anon" onclick="switchTab('anon')" class="bg-slate-800 text-white px-3 py-2 font-medium text-sm rounded-md transition-colors" aria-current="page" data-i18n="tab_anon">
+                        Pseudonymization
+                    </button>
+                    <button id="tab-btn-deanon" onclick="switchTab('deanon')" class="text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 px-3 py-2 font-medium text-sm rounded-md transition-colors" data-i18n="tab_deanon">
+                        Restoration
+                    </button>
+                </nav>
+                <!-- Language Switcher -->
+                <div class="flex items-center space-x-1 border-l border-slate-700 pl-4">
+                    <button onclick="setLanguage('en')" id="lang-en" class="px-2 py-1 text-xs font-bold rounded bg-slate-800 text-white transition-colors">EN</button>
+                    <button onclick="setLanguage('pl')" id="lang-pl" class="px-2 py-1 text-xs font-bold rounded text-slate-400 hover:text-slate-200 transition-colors">PL</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 relative">
+        
+        <!-- Tab 1: Pseudonimizacja -->
+        <div id="tab-anon" class="space-y-6">
+            
+            <!-- Phrase Tag Manager -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <div>
+                        <h2 data-i18n="phrases_title" class="text-lg font-semibold text-white">Phrases to pseudonymize</h2>
+                        <p data-i18n="phrases_desc" class="text-sm text-slate-400 mt-1">Words and phrases that will be replaced with random tokens.</p>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="importPhrases()" data-i18n="btn_import" class="text-sm px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors text-slate-300">
+                            Import list
+                        </button>
+                        <button onclick="exportPhrases()" data-i18n="btn_export" class="text-sm px-3 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 transition-colors text-slate-300">
+                            Export list
+                        </button>
+                        <button onclick="clearPhrases()" data-i18n="btn_clear" class="text-sm px-3 py-1.5 rounded-lg border border-red-900/50 text-red-400 hover:bg-red-950 transition-colors">
+                            Clear all
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="relative">
+                    <input type="text" id="phrase-input" data-i18n-placeholder="phrase_input_ph" placeholder="Type phrase and press Enter (or comma)..." 
+                           class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-500 transition-all">
+                </div>
+
+                <div id="tags-container" class="mt-4 flex flex-wrap gap-2 min-h-[40px] max-h-48 overflow-y-auto">
+                    <!-- Tags rendered here by JS -->
+                </div>
+            </section>
+
+            <!-- Main Grid for Pseudonymization -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <!-- Left: Source -->
+                <section class="flex flex-col h-[calc(100vh-290px)] min-h-[500px] bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <div class="border-b border-slate-800 px-4 py-3 bg-slate-850 flex justify-between items-center">
+                        <h3 data-i18n="source_title" class="text-sm font-medium text-slate-200">Source text</h3>
+                        <span id="char-count" class="text-xs text-slate-500">0 <span data-i18n="chars">characters</span></span>
+                    </div>
+                    <textarea id="source-text" data-i18n-placeholder="source_ph" class="flex-grow w-full bg-transparent p-4 text-sm text-slate-300 focus:outline-none resize-none placeholder-slate-600" placeholder="Paste text to pseudonymize..."></textarea>
+                    <div class="p-4 border-t border-slate-800 bg-slate-850">
+                        <button id="btn-anonymize" onclick="performAnonymization()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all flex justify-center items-center gap-2">
+                            <span data-i18n="btn_anonymize">Pseudonymize text</span>
+                            <svg id="spinner-anon" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Right: Output -->
+                <section class="flex flex-col h-[calc(100vh-290px)] min-h-[500px] space-y-4">
+                    <!-- Top Output Text -->
+                    <div class="flex-grow h-2/3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+                        <div class="border-b border-slate-800 px-4 py-3 bg-slate-850 flex justify-between items-center">
+                            <h3 data-i18n="result_title" class="text-sm font-medium text-slate-200">Result after pseudonymization</h3>
+                            <button onclick="copyToClipboard('result-text')" data-i18n="btn_copy" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+                                Copy text
+                            </button>
+                        </div>
+                        <textarea id="result-text" readonly class="flex-grow w-full bg-slate-950/50 p-4 text-sm text-slate-400 focus:outline-none resize-none"></textarea>
+                    </div>
+
+                    <!-- Bottom JSON Mapping -->
+                    <div class="h-1/3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+                        <div class="border-b border-slate-800 px-4 py-3 bg-slate-850 flex justify-between items-center">
+                            <h3 data-i18n="map_title" class="text-sm font-medium text-slate-200">Dictionary (Mapping)</h3>
+                            <div class="flex space-x-3">
+                                <button onclick="copyToClipboard('result-json')" data-i18n="btn_copy_json" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+                                    Copy JSON
+                                </button>
+                                <button onclick="downloadJson()" data-i18n="btn_dl_json" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium">
+                                    Download .json
+                                </button>
+                            </div>
+                        </div>
+                        <textarea id="result-json" readonly class="flex-grow w-full bg-slate-950/50 p-4 text-xs font-mono text-emerald-500/80 focus:outline-none resize-none"></textarea>
+                    </div>
+                </section>
+            </div>
+        </div>
+
+        <!-- Tab 2: Przywracanie -->
+        <div id="tab-deanon" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-220px)] min-h-[500px]">
+                
+                <!-- Left: Inputs -->
+                <section class="flex flex-col h-full space-y-4">
+                    <!-- Mapping Input -->
+                    <div class="h-1/3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+                        <div class="border-b border-slate-800 px-4 py-3 bg-slate-850 flex justify-between items-center">
+                            <h3 data-i18n="json_title" class="text-sm font-medium text-slate-200">Dictionary (JSON)</h3>
+                            <span id="json-status" data-i18n="json_status_wait" class="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">
+                                Waiting
+                            </span>
+                        </div>
+                        <textarea id="deanon-json" oninput="validateDeanonJson()" class="flex-grow w-full bg-slate-950/50 p-4 text-xs font-mono text-slate-300 focus:outline-none resize-none placeholder-slate-600" data-i18n-placeholder="deanon_json_ph" placeholder='{"John Doe": "<[ANON_ABCD]>", ...}'></textarea>
+                    </div>
+
+                    <!-- Ciphertext Input -->
+                    <div class="h-2/3 bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+                        <div class="border-b border-slate-800 px-4 py-3 bg-slate-850">
+                            <h3 data-i18n="cipher_title" class="text-sm font-medium text-slate-200">Pseudonymized text</h3>
+                        </div>
+                        <textarea id="deanon-text" class="flex-grow w-full bg-transparent p-4 text-sm text-slate-300 focus:outline-none resize-none placeholder-slate-600" data-i18n-placeholder="cipher_ph" placeholder="Paste text to restore..."></textarea>
+                        <div class="p-4 border-t border-slate-800 bg-slate-850">
+                            <button id="btn-deanonymize" onclick="performDeanonymization()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm transition-all flex justify-center items-center gap-2">
+                                <span data-i18n="btn_deanonymize">Restore original text</span>
+                                <svg id="spinner-deanon" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Right: Output -->
+                <section class="h-full bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-sm">
+                    <div class="border-b border-slate-800 px-4 py-3 bg-slate-850 flex justify-between items-center">
+                        <h3 data-i18n="deanon_result_title" class="text-sm font-medium text-slate-200">Result (Original text)</h3>
+                        <button onclick="copyToClipboard('deanon-result')" data-i18n="btn_copy" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">
+                            Copy text
+                        </button>
+                    </div>
+                    <textarea id="deanon-result" readonly class="flex-grow w-full bg-slate-950/50 p-4 text-sm text-slate-400 focus:outline-none resize-none"></textarea>
+                </section>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        const LOCAL_STORAGE_KEY = 'anonymizer_phrases';
+        const DICT_STORAGE_KEY = 'anonymizer_last_dict';
+        let phrases = [];
+
+        // --- i18n Dictionary ---
+        const i18n = {
+            en: {
+                badge_text: "Zero-Retention / In-Memory",
+                tab_anon: "Pseudonymization",
+                tab_deanon: "Restoration",
+                phrases_title: "Phrases to pseudonymize",
+                phrases_desc: "Words and phrases that will be replaced with random tokens.",
+                btn_import: "Import list",
+                btn_export: "Export list",
+                btn_clear: "Clear all",
+                phrase_input_ph: "Type phrase and press Enter (or comma)...",
+                source_title: "Source text",
+                chars: "characters",
+                source_ph: "Paste text to pseudonymize...",
+                btn_anonymize: "Pseudonymize text",
+                result_title: "Result after pseudonymization",
+                btn_copy: "Copy text",
+                map_title: "Dictionary (Mapping)",
+                btn_copy_json: "Copy JSON",
+                btn_dl_json: "Download .json",
+                json_title: "Dictionary (JSON)",
+                json_status_wait: "Waiting",
+                json_status_ok: "Valid",
+                json_status_err: "Invalid JSON",
+                deanon_json_ph: '{"John Doe": "<[ANON_ABCD]>", ...}',
+                cipher_title: "Pseudonymized text",
+                cipher_ph: "Paste text to restore...",
+                btn_deanonymize: "Restore original text",
+                deanon_result_title: "Result (Original text)",
+                
+                // Toasts & JS strings
+                t_empty_phrases: "No added phrases.",
+                t_confirm_clear: "Are you sure you want to delete all phrases?",
+                t_clear: "Phrase list cleared",
+                t_no_export: "No phrases to export",
+                t_export_ok: "List exported",
+                t_import_ok: "Phrases successfully imported",
+                t_import_err: "File import error: Bad format",
+                t_src_empty: "Source text cannot be empty",
+                t_def_empty: "No phrases defined",
+                t_server_err: "A server error occurred",
+                t_anon_ok: "Text pseudonymized",
+                t_must_obj: "Must be an object",
+                t_cipher_empty: "Pseudonymized text cannot be empty",
+                t_dict_err: "Provide a valid dictionary in JSON format",
+                t_dict_empty: "Dictionary cannot be empty",
+                t_deanon_ok: "Original text restored",
+                t_copy_err: "No content to copy",
+                t_copy_ok: "Copied to clipboard!",
+                t_copy_fail: "Failed to copy",
+                t_dl_err: "No dictionary to download"
+            },
+            pl: {
+                badge_text: "Brak Zapisywania / In-Memory",
+                tab_anon: "Pseudonimizacja",
+                tab_deanon: "Przywracanie",
+                phrases_title: "Frazy do pseudonimizacji",
+                phrases_desc: "Słowa i frazy, które zostaną zastąpione losowymi tokenami.",
+                btn_import: "Importuj listę",
+                btn_export: "Eksportuj listę",
+                btn_clear: "Wyczyść wszystko",
+                phrase_input_ph: "Wpisz frazę i naciśnij Enter (lub przecinek)...",
+                source_title: "Tekst źródłowy",
+                chars: "znaków",
+                source_ph: "Wklej tekst do spseudonimizowania...",
+                btn_anonymize: "Pseudonimizuj tekst",
+                result_title: "Wynik po pseudonimizacji",
+                btn_copy: "Kopiuj tekst",
+                map_title: "Słownik (Mapping)",
+                btn_copy_json: "Kopiuj JSON",
+                btn_dl_json: "Pobierz .json",
+                json_title: "Słownik (JSON)",
+                json_status_wait: "Oczekuje",
+                json_status_ok: "Prawidłowy",
+                json_status_err: "Błędny JSON",
+                deanon_json_ph: '{"Jan Kowalski": "<[ANON_ABCD]>", ...}',
+                cipher_title: "Tekst spseudonimizowany",
+                cipher_ph: "Wklej tekst do przywrócenia...",
+                btn_deanonymize: "Przywróć tekst oryginalny",
+                deanon_result_title: "Wynik (Oryginalny tekst)",
+                
+                t_empty_phrases: "Brak dodanych fraz.",
+                t_confirm_clear: "Czy na pewno chcesz usunąć wszystkie frazy?",
+                t_clear: "Lista fraz wyczyszczona",
+                t_no_export: "Brak fraz do eksportu",
+                t_export_ok: "Lista wyeksportowana",
+                t_import_ok: "Pomyślnie zaimportowano frazy",
+                t_import_err: "Błąd importu pliku: Zły format",
+                t_src_empty: "Tekst źródłowy nie może być pusty",
+                t_def_empty: "Brak zdefiniowanych fraz",
+                t_server_err: "Wystąpił błąd po stronie serwera",
+                t_anon_ok: "Tekst spseudonimizowany",
+                t_must_obj: "Musi być obiektem",
+                t_cipher_empty: "Tekst spseudonimizowany nie może być pusty",
+                t_dict_err: "Podaj poprawny słownik w formacie JSON",
+                t_dict_empty: "Słownik nie może być pusty",
+                t_deanon_ok: "Oryginalny tekst przywrócony",
+                t_copy_err: "Brak zawartości do skopiowania",
+                t_copy_ok: "Skopiowano do schowka!",
+                t_copy_fail: "Nie udało się skopiować",
+                t_dl_err: "Brak słownika do pobrania"
+            }
+        };
+
+        let currentLang = 'en';
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initLanguage();
+            loadPhrases();
+            
+            // Load last dictionary
+            try {
+                const lastDict = localStorage.getItem(DICT_STORAGE_KEY);
+                if (lastDict) {
+                    document.getElementById('result-json').value = lastDict;
+                    document.getElementById('deanon-json').value = lastDict;
+                    validateDeanonJson();
+                }
+            } catch(e) {}
+            
+            // Character counter
+            const sourceInput = document.getElementById('source-text');
+            const charCount = document.getElementById('char-count');
+            sourceInput.addEventListener('input', (e) => {
+                charCount.innerHTML = `${e.target.value.length} <span data-i18n="chars">${i18n[currentLang].chars}</span>`;
+            });
+
+            // Phrase Input handling
+            const phraseInput = document.getElementById('phrase-input');
+            phraseInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addPhrase(e.target.value);
+                    e.target.value = '';
+                }
+            });
+        });
+
+        // --- Language Management ---
+        function initLanguage() {
+            // Get from cookie
+            const match = document.cookie.match(new RegExp('(^| )lang=([^;]+)'));
+            if (match) {
+                currentLang = match[2];
+            } else {
+                currentLang = 'en'; // default
+            }
+            if (!['en', 'pl'].includes(currentLang)) currentLang = 'en';
+            applyLanguage(currentLang);
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.cookie = `lang=${lang}; path=/; max-age=31536000`; // 1 year
+            applyLanguage(lang);
+        }
+
+        function applyLanguage(lang) {
+            document.documentElement.lang = lang;
+            const dict = i18n[lang];
+
+            // Update DOM text
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.textContent = dict[key];
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (dict[key]) {
+                    el.placeholder = dict[key];
+                }
+            });
+
+            // Re-render components that might have translated states
+            renderTags();
+            validateDeanonJson();
+            
+            // Re-trigger char counter translation
+            const sourceInput = document.getElementById('source-text');
+            document.getElementById('char-count').innerHTML = `${sourceInput.value.length} <span data-i18n="chars">${dict.chars}</span>`;
+
+            // Update Toggle UI
+            const btnEn = document.getElementById('lang-en');
+            const btnPl = document.getElementById('lang-pl');
+            if (lang === 'en') {
+                btnEn.className = "px-2 py-1 text-xs font-bold rounded bg-slate-800 text-white transition-colors";
+                btnPl.className = "px-2 py-1 text-xs font-bold rounded text-slate-400 hover:text-slate-200 transition-colors";
+            } else {
+                btnPl.className = "px-2 py-1 text-xs font-bold rounded bg-slate-800 text-white transition-colors";
+                btnEn.className = "px-2 py-1 text-xs font-bold rounded text-slate-400 hover:text-slate-200 transition-colors";
+            }
+        }
+
+        function t(key) {
+            return i18n[currentLang][key] || key;
+        }
+
+        // --- Tab Switching ---
+        function switchTab(tabId) {
+            const tabs = ['anon', 'deanon'];
+            tabs.forEach(tab => {
+                const el = document.getElementById(`tab-${tab}`);
+                const btn = document.getElementById(`tab-btn-${tab}`);
+                if (tab === tabId) {
+                    el.classList.remove('hidden');
+                    btn.classList.replace('text-slate-400', 'text-white');
+                    btn.classList.replace('hover:text-slate-200', 'bg-slate-800');
+                    btn.classList.remove('hover:bg-slate-800/50');
+                } else {
+                    el.classList.add('hidden');
+                    btn.classList.replace('text-white', 'text-slate-400');
+                    btn.classList.replace('bg-slate-800', 'hover:text-slate-200');
+                    btn.classList.add('hover:bg-slate-800/50');
+                }
+            });
+        }
+
+        // --- Phrase Management ---
+        function loadPhrases() {
+            try {
+                const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+                if (stored) {
+                    phrases = JSON.parse(stored);
+                }
+            } catch (e) {
+                console.error("Failed to parse phrases from localStorage");
+                phrases = [];
+            }
+            renderTags();
+        }
+
+        function savePhrases() {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(phrases));
+            renderTags();
+        }
+
+        function addPhrase(text) {
+            const trimmed = text.trim();
+            if (trimmed && !phrases.includes(trimmed)) {
+                phrases.push(trimmed);
+                savePhrases();
+            }
+        }
+
+        function removePhrase(index) {
+            phrases.splice(index, 1);
+            savePhrases();
+        }
+
+        function clearPhrases() {
+            if(confirm(t('t_confirm_clear'))) {
+                phrases = [];
+                savePhrases();
+                showToast(t('t_clear'), "success");
+            }
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tags-container');
+            container.innerHTML = '';
+            
+            if (phrases.length === 0) {
+                container.innerHTML = `<span class="text-sm text-slate-500 italic">${t('t_empty_phrases')}</span>`;
+                return;
+            }
+
+            phrases.forEach((phrase, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 border border-slate-700 text-sm text-slate-200 shadow-sm transition-all hover:border-slate-600';
+                
+                const span = document.createElement('span');
+                span.textContent = phrase;
+                
+                const btn = document.createElement('button');
+                btn.className = 'text-slate-400 hover:text-red-400 focus:outline-none transition-colors';
+                btn.innerHTML = '&times;';
+                btn.onclick = () => removePhrase(index);
+                
+                tag.appendChild(span);
+                tag.appendChild(btn);
+                container.appendChild(tag);
+            });
+        }
+
+        // --- Import/Export ---
+        function exportPhrases() {
+            if (phrases.length === 0) {
+                showToast(t('t_no_export'), "error");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(phrases, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "anonymizer_phrases.json");
+            document.body.appendChild(dl);
+            dl.click();
+            dl.remove();
+            showToast(t('t_export_ok'), "success");
+        }
+
+        function importPhrases() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,.txt';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file,'UTF-8');
+                reader.onload = readerEvent => {
+                    const content = readerEvent.target.result;
+                    try {
+                        let parsed = [];
+                        if (file.name.endsWith('.json')) {
+                            parsed = JSON.parse(content);
+                            if (!Array.isArray(parsed)) throw new Error("JSON must be an array of strings");
+                        } else {
+                            parsed = content.split('\n').map(s => s.trim()).filter(s => s);
+                        }
+                        phrases = [...new Set([...phrases, ...parsed])];
+                        savePhrases();
+                        showToast(t('t_import_ok'), "success");
+                    } catch (error) {
+                        showToast(t('t_import_err'), "error");
+                    }
+                }
+            }
+            input.click();
+        }
+
+        // --- API Calls ---
+        async function performAnonymization() {
+            const text = document.getElementById('source-text').value;
+            if (!text) {
+                showToast(t('t_src_empty'), "error");
+                return;
+            }
+            if (phrases.length === 0) {
+                showToast(t('t_def_empty'), "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-anonymize');
+            const spinner = document.getElementById('spinner-anon');
+            const resultText = document.getElementById('result-text');
+            const resultJson = document.getElementById('result-json');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            resultText.value = '';
+            resultJson.value = '';
+
+            try {
+                const response = await fetch('/api/anonymize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, words: phrases })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || t('t_server_err'));
+                }
+
+                const data = await response.json();
+                resultText.value = data.result_text;
+                
+                const dictStr = JSON.stringify(data.mapping, null, 2);
+                resultJson.value = dictStr;
+                
+                // Save to localStorage and auto-fill deanon tab
+                localStorage.setItem(DICT_STORAGE_KEY, dictStr);
+                document.getElementById('deanon-json').value = dictStr;
+                validateDeanonJson();
+                
+                showToast(t('t_anon_ok'), "success");
+
+            } catch (error) {
+                showToast(error.message, "error");
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function validateDeanonJson() {
+            const input = document.getElementById('deanon-json').value;
+            const statusBadge = document.getElementById('json-status');
+            
+            if (!input.trim()) {
+                statusBadge.textContent = t('json_status_wait');
+                statusBadge.className = 'text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700';
+                return null;
+            }
+
+            try {
+                const parsed = JSON.parse(input);
+                if (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null) {
+                    throw new Error(t('t_must_obj'));
+                }
+                statusBadge.textContent = t('json_status_ok');
+                statusBadge.className = 'text-xs px-2 py-0.5 rounded bg-emerald-900/50 text-emerald-400 border border-emerald-800';
+                return parsed;
+            } catch (e) {
+                statusBadge.textContent = t('json_status_err');
+                statusBadge.className = 'text-xs px-2 py-0.5 rounded bg-red-900/50 text-red-400 border border-red-800';
+                return null;
+            }
+        }
+
+        async function performDeanonymization() {
+            const text = document.getElementById('deanon-text').value;
+            const mapping = validateDeanonJson();
+            
+            if (!text) {
+                showToast(t('t_cipher_empty'), "error");
+                return;
+            }
+            if (!mapping) {
+                showToast(t('t_dict_err'), "error");
+                return;
+            }
+            if (Object.keys(mapping).length === 0) {
+                showToast(t('t_dict_empty'), "error");
+                return;
+            }
+
+            const btn = document.getElementById('btn-deanonymize');
+            const spinner = document.getElementById('spinner-deanon');
+            const resultText = document.getElementById('deanon-result');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            resultText.value = '';
+
+            try {
+                const response = await fetch('/api/deanonymize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, mapping: mapping })
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json();
+                    throw new Error(errData.detail || t('t_server_err'));
+                }
+
+                const data = await response.json();
+                resultText.value = data.result_text;
+                showToast(t('t_deanon_ok'), "success");
+
+            } catch (error) {
+                showToast(error.message, "error");
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+            }
+        }
+
+        // --- Utils ---
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).value;
+            if (!text) {
+                showToast(t('t_copy_err'), "error");
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(t('t_copy_ok'), "success");
+            }).catch(err => {
+                showToast(t('t_copy_fail'), "error");
+            });
+        }
+
+        function downloadJson() {
+            const text = document.getElementById('result-json').value;
+            if (!text) {
+                showToast(t('t_dl_err'), "error");
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(text);
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "mapping_dict.json");
+            document.body.appendChild(dl);
+            dl.click();
+            dl.remove();
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let colors = "bg-slate-800 border-slate-700 text-slate-200";
+            let icon = "";
+            
+            if (type === 'success') {
+                colors = "bg-emerald-950 border-emerald-900 text-emerald-200";
+                icon = `<svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            } else if (type === 'error') {
+                colors = "bg-red-950 border-red-900 text-red-200";
+                icon = `<svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>`;
+            } else {
+                icon = `<svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            }
+
+            toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg ${colors}`;
+            toast.innerHTML = `${icon} <span class="text-sm font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

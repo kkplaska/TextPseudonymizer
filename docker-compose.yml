@@ -1,0 +1,11 @@
+services:
+  anonymizer:
+    build: .
+    container_name: anonymizer_app
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - MAX_TEXT_LENGTH=1000000
+      - MAX_WORDS_COUNT=1000
+    restart: unless-stopped

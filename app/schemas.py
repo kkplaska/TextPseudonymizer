@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List, Dict
+from typing import List, Dict, Optional
 import os
 
 MAX_TEXT_LENGTH = int(os.getenv("MAX_TEXT_LENGTH", "10000000"))
@@ -8,7 +8,7 @@ MAX_WORDS_COUNT = int(os.getenv("MAX_WORDS_COUNT", "5000"))
 class AnonymizeRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=MAX_TEXT_LENGTH, description="The text to anonymize")
     words: List[str] = Field(..., min_length=1, max_length=MAX_WORDS_COUNT, description="List of phrases to replace")
-    existing_mapping: Dict[str, str] = Field(default=None, description="Previously generated mapping to reuse")
+    existing_mapping: Optional[Dict[str, str]] = Field(default=None, description="Previously generated mapping to reuse")
     match_whole_words: bool = Field(default=True, description="Whether to match whole words only")
 
     @field_validator('words')

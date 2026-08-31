@@ -1,7 +1,7 @@
 import re
 import secrets
 import string
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
 
 TOKEN_PREFIX = "<[ANON_"
 TOKEN_SUFFIX = "]>"
@@ -16,7 +16,7 @@ def generate_token(existing_tokens: set) -> str:
         if token not in existing_tokens:
             return token
 
-def anonymize_text(text: str, words: List[str], existing_mapping: Dict[str, str] = None, match_whole_words: bool = True) -> Tuple[str, Dict[str, str]]:
+def anonymize_text(text: str, words: List[str], existing_mapping: Optional[Dict[str, str]] = None, match_whole_words: bool = True) -> Tuple[str, Dict[str, str]]:
     """
     Anonymize occurrences of specific words in the text.
     Handles Polish diacritics and regex special characters safely.

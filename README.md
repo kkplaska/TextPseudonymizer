@@ -15,6 +15,9 @@ It works entirely **in-memory**. No text, dictionaries, or logs are ever saved t
 
 ### ✨ Key Features
 - **Zero Data Retention:** 100% stateless backend processing.
+- **Single-Pass Regex Engine:** High-performance greedy replacement in a single pass to eliminate token collisions and handle massive files (50,000+ characters) effortlessly.
+- **Substring Matching Toggle:** Flexibility to match strictly whole words or replace substrings inside composite terms (e.g., matching `xyz` inside `axyzb`).
+- **Dictionary Reuse:** Seamlessly reuse previously generated JSON dictionaries to ensure consistent anonymization across multiple documents or batches.
 - **Robust Text Processing:** Safely handles Regex special characters and complex Unicode (e.g., Polish diacritics).
 - **Smart Case-Insensitivity:** Automatically detects different casing of the same word (e.g., `word`, `Word`, `WORD`) and maps them uniquely.
 - **Modern Dark UI:** Beautiful, responsive interface built with Tailwind CSS.
@@ -97,8 +100,8 @@ The application can be configured via environment variables.
 | Variable | Default | Description |
 |---|---|---|
 | `PORT` | `8000` | The port the FastAPI server listens on. |
-| `MAX_TEXT_LENGTH` | `1000000` | Maximum allowed characters in the source text payload. Protects against resource exhaustion. |
-| `MAX_WORDS_COUNT` | `1000` | Maximum allowed phrases in the dictionary. |
+| `MAX_TEXT_LENGTH` | `10000000` | Maximum allowed characters in the source text payload (~10 MB). Protects against resource exhaustion. |
+| `MAX_WORDS_COUNT` | `5000` | Maximum allowed phrases in the dictionary. |
 
 ### Changing settings with Docker Compose
 Edit the `docker-compose.yml` file to modify ports or limits. For example:
@@ -107,8 +110,8 @@ ports:
   - "8080:8000"
 environment:
   - PORT=8000
-  - MAX_TEXT_LENGTH=2000000
-  - MAX_WORDS_COUNT=500
+  - MAX_TEXT_LENGTH=10000000
+  - MAX_WORDS_COUNT=5000
 ```
 
 **Using Environment Variables:**
@@ -116,6 +119,21 @@ The `Dockerfile` is configured to respect the `$PORT` environment variable.
 ```bash
 docker run -e PORT=5000 -p 5000:5000 text-pseudonymizer
 ```
+
+---
+
+## 🧪 Testing & CI/CD
+
+The project includes an automated test suite verifying core anonymization logic, regex handling, roundtrip integrity, dictionary reuse, and performance benchmarks on large texts (~70k chars).
+
+### Running Tests Locally
+Run standard Python `unittest`:
+```bash
+python -m unittest discover -s tests
+```
+
+### Continuous Integration (CI)
+GitHub Actions automatically runs all unit tests on every `push` and `pull_request` to the `main` branch. Docker images are only built and pushed to the container registry if all tests pass.
 
 ---
 

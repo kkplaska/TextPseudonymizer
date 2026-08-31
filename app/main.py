@@ -34,10 +34,17 @@ async def general_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal server error: " + str(exc)}
     )
 
+APP_VERSION = os.getenv("APP_VERSION", "v1.1.0")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "https://github.com/kkplaska/TextPseudonymizer")
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     """Render the single-page application."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "app_version": APP_VERSION,
+        "github_repo": GITHUB_REPO
+    })
 
 @app.get("/health")
 async def health_check():

@@ -100,9 +100,25 @@
                            class="w-full bg-slate-950 border border-slate-700 rounded-lg pl-4 pr-10 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-500 transition-all">
                 </div>
 
+                <div class="mt-3 flex items-center">
+                    <input type="checkbox" id="match-whole-words" class="w-4 h-4 text-indigo-600 bg-slate-900 border-slate-700 rounded focus:ring-indigo-500 focus:ring-2" checked>
+                    <label for="match-whole-words" data-i18n="match_whole_words" class="ml-2 text-sm font-medium text-slate-300">Match whole words only</label>
+                </div>
+
                 <div id="tags-container" class="mt-4 flex flex-wrap gap-2 min-h-[40px] max-h-48 overflow-y-auto">
                     <!-- Tags rendered here by JS -->
                 </div>
+            </section>
+
+            <!-- Existing Dictionary Section -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                    <div>
+                        <h2 data-i18n="existing_dict_title" class="text-lg font-semibold text-white">Existing Dictionary (Optional)</h2>
+                        <p data-i18n="existing_dict_desc" class="text-sm text-slate-400 mt-1">Provide a previously generated dictionary to reuse the same tokens.</p>
+                    </div>
+                </div>
+                <textarea id="existing-dict" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-xs font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 resize-y" data-i18n-placeholder="existing_dict_ph" placeholder='{"phrase": "<[ANON_ABCD]>", ...}' rows="3"></textarea>
             </section>
 
             <!-- Main Grid for Pseudonymization -->
@@ -246,6 +262,10 @@
                 cipher_ph: "Paste text to restore...",
                 btn_deanonymize: "Restore original text",
                 deanon_result_title: "Result (Original text)",
+                existing_dict_title: "Existing Dictionary (Optional)",
+                existing_dict_desc: "Provide a previously generated dictionary to reuse the same tokens.",
+                existing_dict_ph: '{"phrase": "<[ANON_ABCD]>", ...}',
+                match_whole_words: "Match whole words only",
                 
                 // Toasts & JS strings
                 t_empty_phrases: "No added phrases.",
@@ -297,6 +317,10 @@
                 cipher_ph: "Wklej tekst do przywrócenia...",
                 btn_deanonymize: "Przywróć tekst oryginalny",
                 deanon_result_title: "Wynik (Oryginalny tekst)",
+                existing_dict_title: "Istniejący słownik (Opcjonalnie)",
+                existing_dict_desc: "Podaj wcześniej wygenerowany słownik, aby ponownie użyć tych samych tokenów.",
+                existing_dict_ph: '{"fraza": "<[ANON_ABCD]>", ...}',
+                match_whole_words: "Dopasowuj tylko całe słowa",
                 
                 t_empty_phrases: "Brak dodanych fraz.",
                 t_confirm_clear: "Czy na pewno chcesz usunąć wszystkie frazy?",
@@ -573,11 +597,34 @@
             resultText.value = '';
             resultJson.value = '';
 
+            const existingDictVal = document.getElementById('existing-dict').value.trim();
+            let existingMapping = null;
+            if (existingDictVal) {
+                try {
+                    existingMapping = JSON.parse(existingDictVal);
+                    if (typeof existingMapping !== 'object' || Array.isArray(existingMapping)) {
+                        throw new Error("Must be an object");
+                    }
+                } catch (e) {
+                    showToast(t('t_dict_err'), "error");
+                    btn.disabled = false;
+                    spinner.classList.add('hidden');
+                    return;
+                }
+            }
+
+            const matchWholeWords = document.getElementById('match-whole-words').checked;
+
             try {
                 const response = await fetch('/api/anonymize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text, words: phrases })
+                    body: JSON.stringify({ 
+                        text: text, 
+                        words: phrases, 
+                        existing_mapping: existingMapping,
+                        match_whole_words: matchWholeWords
+                    })
                 });
 
                 if (!response.ok) {

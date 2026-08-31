@@ -48,7 +48,7 @@ async def health_check():
 async def anonymize(payload: AnonymizeRequest):
     """Anonymize text based on a list of words."""
     try:
-        result_text, mapping = anonymize_text(payload.text, payload.words)
+        result_text, mapping = anonymize_text(payload.text, payload.words, payload.existing_mapping, payload.match_whole_words)
         return AnonymizeResponse(result_text=result_text, mapping=mapping)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

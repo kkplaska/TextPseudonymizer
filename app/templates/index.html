@@ -110,15 +110,20 @@
                 </div>
             </section>
 
-            <!-- Existing Dictionary Section -->
-            <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                    <div>
-                        <h2 data-i18n="existing_dict_title" class="text-lg font-semibold text-white">Existing Dictionary (Optional)</h2>
-                        <p data-i18n="existing_dict_desc" class="text-sm text-slate-400 mt-1">Provide a previously generated dictionary to reuse the same tokens.</p>
+            <!-- Existing Dictionary Section (Collapsible) -->
+            <section class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-sm transition-all">
+                <button type="button" onclick="toggleExistingDict()" class="w-full p-4 sm:p-5 flex items-center justify-between text-left hover:bg-slate-850/60 transition-colors focus:outline-none">
+                    <div class="flex flex-col">
+                        <h2 data-i18n="existing_dict_title" class="text-sm font-semibold text-white">Existing Dictionary (Optional)</h2>
+                        <p data-i18n="existing_dict_desc" class="text-xs text-slate-400 mt-1">Provide a previously generated dictionary to reuse the same tokens.</p>
                     </div>
+                    <svg id="existing-dict-chevron" class="w-5 h-5 text-slate-400 transition-transform duration-200 flex-shrink-0 ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
+                <div id="existing-dict-content" class="hidden px-4 sm:px-5 pb-5 pt-1 border-t border-slate-800/60">
+                    <textarea id="existing-dict" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-xs font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 resize-y" data-i18n-placeholder="existing_dict_ph" placeholder='{"phrase": "<[ANON_ABCD]>", ...}' rows="3"></textarea>
                 </div>
-                <textarea id="existing-dict" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-4 text-xs font-mono text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-slate-600 resize-y" data-i18n-placeholder="existing_dict_ph" placeholder='{"phrase": "<[ANON_ABCD]>", ...}' rows="3"></textarea>
             </section>
 
             <!-- Main Grid for Pseudonymization -->
@@ -441,6 +446,19 @@
 
         function t(key) {
             return i18n[currentLang][key] || key;
+        }
+
+        function toggleExistingDict() {
+            const content = document.getElementById('existing-dict-content');
+            const chevron = document.getElementById('existing-dict-chevron');
+            const isHidden = content.classList.contains('hidden');
+            if (isHidden) {
+                content.classList.remove('hidden');
+                chevron.classList.add('rotate-180');
+            } else {
+                content.classList.add('hidden');
+                chevron.classList.remove('rotate-180');
+            }
         }
 
         // --- Tab Switching ---

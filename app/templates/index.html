@@ -747,16 +747,34 @@
 
         // --- Utils ---
         function copyToClipboard(elementId) {
-            const text = document.getElementById(elementId).value;
+            const el = document.getElementById(elementId);
+            const text = el.value;
             if (!text) {
                 showToast(t('t_copy_err'), "error");
                 return;
             }
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(t('t_copy_ok'), "success");
-            }).catch(err => {
-                showToast(t('t_copy_fail'), "error");
-            });
+            
+            // Modern Async Clipboard API (requires HTTPS or localhost)
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(t('t_copy_ok'), "success");
+                }).catch(err => {
+                    showToast(t('t_copy_fail'), "error");
+                });
+            } else {
+                // Fallback for HTTP (non-secure context)
+                try {
+                    el.select();
+                    document.execCommand('copy');
+                    // Clear selection
+                    if (window.getSelection) {
+                        window.getSelection().removeAllRanges();
+                    }
+                    showToast(t('t_copy_ok'), "success");
+                } catch (err) {
+                    showToast(t('t_copy_fail'), "error");
+                }
+            }
         }
 
         function downloadJson() {
